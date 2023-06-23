@@ -20,21 +20,24 @@ public class PlayerScript : MonoBehaviour
     bool jumpEnd;           //ジャンプボタン離した判定
     [SerializeField] float jumpTime;//ジャンプ時間測定
     float jump = 6f;        // ジャンプ力
-    public int jumpGrowLevel = 1; //ジャンプレベル
+    int jumpGrowLevel = 1; //ジャンプレベル
     bool doubleJumpFlg = false; //2段ジャンプフラグ
 
     //GrowDash関連変数
-    public int dashGrowLevel = 1;
+    int dashGrowLevel = 1;
     float speed;
+    [SerializeField] float dashTime = 5.0f;//ダッシュ受付時間
     //回避無敵フラグ
     bool invincibleFlg;
-    //空中回避フラグ
-    bool airDodgeFlg;
 
 
     Vector3 moveDirection = Vector3.zero;
 
     Vector3 startPos;
+
+    //SE用
+    public AudioClip sound3;
+    AudioSource SE;
 
 
     void Start()
@@ -49,14 +52,29 @@ public class PlayerScript : MonoBehaviour
 
         startPos = transform.position;
 
-        //空中回避可能フラグをオフに
-        airDodgeFlg = false;
-        
+        SE = GetComponent<AudioSource>(); //SE変数
+
+
     }
 
     void Update()
     {
-        DashGrow();
+        // 移動速度を取得       
+        if (Input.GetKey(KeyCode.LeftShift))
+        {
+            speed = sprintSpeed;
+            dashGrowLevel++;
+        }
+        else
+        {
+            speed = normalSpeed;
+        }
+        
+        if (Input.GetKeyDown(KeyCode.LeftControl)&&dashGrowLevel > 5)
+        {
+            dashGrowLevel++;
+            speed = sprintSpeed * 50;
+        }
 
         // カメラの向きを基準にした正面方向のベクトル
         Vector3 cameraForward = Vector3.Scale(Camera.main.transform.forward, new Vector3(1, 0, 1)).normalized;
@@ -83,10 +101,24 @@ public class PlayerScript : MonoBehaviour
         con.Move(moveDirection * Time.deltaTime);
     }
 
+    // 指定地点に強制移動する
+    public void MoveStartPos()
+    {
+        con.enabled = false;
+
+        moveDirection = Vector3.zero;
+        transform.position = startPos + Vector3.up * 10f;
+        transform.rotation = Quaternion.identity;
+
+        con.enabled = true;
+    }
+
 
     //成長ジャンプスクリプト
     void JumpGrow()
     {
+        
+
         // isGrounded は地面にいるかどうかを判定します
         // 地面にいるとき、もしくは2段ジャンプフラグがオンの時はジャンプを可能に
         if (con.isGrounded)
@@ -99,6 +131,9 @@ public class PlayerScript : MonoBehaviour
 
             if (Input.GetButtonDown("Jump"))
             {
+                //ジャンプSE
+                SE.PlayOneShot(sound3);
+
                 //ジャンプレベルを上げる
                 jumpGrowLevel++;
 
@@ -108,8 +143,6 @@ public class PlayerScript : MonoBehaviour
             //地面についている時にリセット
             jumpEnd = false;
             jumpTime = 0;
-            //空中回避フラグも戻す
-            airDodgeFlg = true;
         }
         else
         {
@@ -134,41 +167,6 @@ public class PlayerScript : MonoBehaviour
                     doubleJumpFlg = false;
                 }
             }
-        }
-    }
-
-    void DashGrow()
-    {
-        // 移動速度を取得       
-        if (Input.GetKey(KeyCode.LeftShift) && con.isGrounded)
-        {
-            if (Input.GetKeyDown(KeyCode.LeftShift))
-                dashGrowLevel++;
-
-            speed = sprintSpeed;
-        }
-        else
-        {
-            speed = normalSpeed;
-        }
-
-        //ダッシュレベルが5以上かつ地面にいるなら回避
-        if (Input.GetKeyDown(KeyCode.LeftControl) && dashGrowLevel > 5 && con.isGrounded)
-        {
-            dashGrowLevel++;
-            //speed = sprintSpeed * 50;
-            // Move は指定したベクトルだけ移動させる命令
-            con.Move(moveDirection * 150 * Time.deltaTime);
-        }
-        //ダッシュレベル10以上かつ空中かつ空中回避フラグがtrueなら空中回避
-        else if (Input.GetKeyDown(KeyCode.LeftControl) && dashGrowLevel > 10 && !con.isGrounded && airDodgeFlg)
-        {
-            dashGrowLevel++;
-            //speed = sprintSpeed * 50;
-            // Move は指定したベクトルだけ移動させる命令
-            moveDirection.y = 0;
-            con.Move(moveDirection * 150 * Time.deltaTime);
-            airDodgeFlg = false;
         }
     }
 }
